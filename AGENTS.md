@@ -8,8 +8,8 @@
 
 - 이 프로젝트는 NEIS 공개 API를 활용해 학교 급식 메뉴를 조회하고 분석하는
   웹 애플리케이션을 단계별로 구현하는 워크숍입니다.
-- 현재 MVP는 React 프론트엔드, FastAPI 백엔드, 내부 OpenAPI 계약 및 Docker
-  Compose 실행 환경으로 구현되어 있습니다.
+- 현재 MVP는 React 프론트엔드, FastAPI 백엔드, 독립 MCP 서버, 내부 OpenAPI
+  계약 및 Docker Compose 실행 환경으로 구현되어 있습니다.
 - 사용자는 두 글자 이상의 학교명을 입력해 학교를 자동 검색하고, 학교와 날짜
   범위를 선택해 중식 메뉴·열량·영양·원산지·급식 인원을 조회할 수 있습니다.
 - 승인된 제품 요구사항은 `PRD.md`, 기술 요구사항은 `TRD.md`를 기준으로
@@ -21,8 +21,8 @@
 ## 프로젝트 구조 및 API 계약
 
 - 모든 애플리케이션과 테스트 코드는 `src` 아래에 둡니다.
-- React 프론트엔드는 `src/web`, Python 백엔드는 `src/api`, E2E 테스트는
-  `src/e2e`에서 관리합니다.
+- React 프론트엔드는 `src/web`, Python 백엔드는 `src/api`, MCP 서버는
+  `src/mcp`, E2E 테스트는 `src/e2e`에서 관리합니다.
 - 프론트엔드의 화면 흐름은 `src/web/src/App.tsx`, 내부 API 호출은
   `src/web/src/api/client.ts`, 날짜 정책은 `src/web/src/utils/dates.ts`에
   있습니다. 컴포넌트에서 `fetch`를 직접 호출하지 않습니다.
@@ -36,7 +36,11 @@
 - `src/web/src/api/schema.d.ts`는 `src/openapi.json`에서 생성되는 파일입니다.
   직접 수정하지 말고 `src/web`에서 `npm run generate:api`를 실행합니다.
 - `data/openapi.json`은 백엔드와 NEIS 사이의 외부 API 계약입니다.
-  프론트엔드는 이 명세로 NEIS를 직접 호출하지 않습니다.
+  백엔드와 MCP 서버는 각각 이 계약을 근거로 NEIS를 호출하며, 프론트엔드는
+  이 명세로 NEIS를 직접 호출하지 않습니다.
+- MCP 서버는 `/mcp`에서 상태 비저장 Streamable HTTP를 제공하고 `/health`를
+  상태 확인에 사용합니다. `getSchoolInfo`, `getMealServiceDietInfo` 도구의
+  이름, 설명 및 입력 스키마는 `data/openapi.json`에서 생성합니다.
 - 학교 검색어는 앞뒤 공백 제거 후 2~100자로 검증합니다.
 - 프론트엔드는 유효한 검색어 입력 후 350ms 동안 추가 입력이 없으면 자동으로
   검색하며, 백엔드에서도 같은 길이 제약을 다시 검증합니다.
@@ -79,6 +83,12 @@
   강제로 추가하지 않습니다.
 - 외부 NEIS 모델과 내부 API 모델을 재사용하지 않으며 변환은 `mappers.py`에서
   수행합니다.
+- MCP 서버는 공식 Python MCP SDK 1.x와 Streamable HTTP를 사용하며 백엔드
+  API와 독립적으로 NEIS를 호출합니다. 도구 스키마는 `data/openapi.json`에서
+  생성하고 API 키를 도구 입력이나 응답에 노출하지 않습니다.
+- MCP 서버는 NEIS 인증키와 `Type=json`을 서버에서 주입하고 급식 도구의
+  `MMEAL_SC_CODE`를 중식 코드 `2`로 강제합니다. `INFO-200`은 정상적인 빈
+  결과로, 입력·외부 서비스 오류와 타임아웃은 MCP tool error로 반환합니다.
 
 ## TypeScript 가이드라인
 
@@ -104,17 +114,26 @@
 ## 개발 및 실행 명령
 
 - 전체 앱은 루트에서 `.env.example`을 `.env`로 복사하고 `NEIS_API_KEY`를
-  설정한 뒤 `docker compose up --build`로 실행합니다. 기본 주소는
-  `http://localhost:8080`입니다.
+  설정한 뒤 로컬 개발 시 `./run_app.sh`, 컨테이너 통합 확인 시
+  `docker compose up --build`로 실행합니다. 로컬 웹 주소는
+  `http://localhost:5173`, Compose 웹 주소는 `http://localhost:8080`입니다.
 - 프론트엔드는 `src/web`에서 `npm ci`, `npm run dev`, `npm run build`,
   `npm test`, `npm run typecheck`를 사용합니다.
 - 백엔드는 `src/api`에서 `uv sync --locked --all-groups`,
   `uv run uvicorn app.main:app --reload`, `uv run --locked pytest`를 사용합니다.
+- MCP 서버는 `src/mcp`에서 `uv sync --locked --all-groups`,
+  `uv run uvicorn app.main:app --reload --port 8001`,
+  `uv run --locked pytest`를 사용합니다.
+- MCP Inspector는 `npx -y @modelcontextprotocol/inspector`로 별도 실행하고
+  `Streamable HTTP` 방식의 `http://127.0.0.1:8001/mcp`에 연결합니다.
+  `localhost`는 IPv6로 해석될 수 있으므로 로컬 Inspector URL에 사용하지
+  않습니다.
 - E2E는 `src/e2e`에서 `npm ci`, `npx playwright install chromium`,
   `npm test`를 사용합니다. 테스트는 Compose로 전체 앱을 실행하고
   `src/e2e/fixtures`의 결정적 NEIS 대역만 사용합니다.
 - 의존성을 변경하면 해당 패키지 관리자로 `src/web/package-lock.json`,
-  `src/e2e/package-lock.json` 또는 `src/api/uv.lock`을 함께 갱신합니다.
+  `src/e2e/package-lock.json`, `src/api/uv.lock` 또는 `src/mcp/uv.lock`을 함께
+  갱신합니다.
 
 ## 테스트 및 유효성 검사
 
@@ -127,6 +146,8 @@
   결과·빈 상태를 사용자 행동 기준으로 검증합니다.
 - 백엔드 테스트는 NEIS 오류 변환, 중식 코드 강제, 날짜 정책, 데이터 매핑 및
   OpenAPI 계약을 검증합니다.
+- MCP 테스트는 도구 목록·호출, Streamable HTTP 연결, OpenAPI 기반 입력
+  스키마, 중식 코드 강제 및 NEIS 오류·타임아웃 변환을 검증합니다.
 - E2E는 브라우저에서 학교 자동 검색, 선택, 중식 조회를 데스크톱과 모바일
   뷰포트로 검증합니다. 내부 `/api/v1` 요청을 브라우저에서 가로채지 않습니다.
 - 동작을 변경하면 정상 경로, 실패 경로와 관련 경계 조건을 검증하는 테스트를
