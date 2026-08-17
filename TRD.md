@@ -111,7 +111,19 @@ flowchart LR
 | 데이터 검증 | Pydantic | 외부 입력과 응답의 경계 검증 |
 | HTTP 클라이언트 | HTTPX AsyncClient | 비동기 NEIS 요청과 테스트 대체 용이성 |
 | 설정 | pydantic-settings | 환경 변수 검증과 설정 분리 |
+| 패키지·프로젝트 관리 | uv | 가상환경, 의존성 설치, 잠금 및 명령 실행을 하나의 도구로 통합 |
 | 애플리케이션 서버 | Uvicorn | ASGI 기반 FastAPI 실행 |
+
+백엔드 Python 프로젝트는 `src/api/pyproject.toml`에 런타임 및 개발 의존성을
+선언하고 `src/api/uv.lock`을 커밋한다. 로컬과 CI에서는 `uv sync --locked
+--all-groups`로 잠금 파일과 동일한 환경을 구성하며, `pip` 또는 별도 가상환경
+명령을 표준 절차로 사용하지 않는다.
+
+개발 서버의 표준 실행 명령은 `src/api`에서 실행하는 `uv run uvicorn
+app.main:app --reload`이다. 테스트와 그 밖의 Python 도구도 `uv run`으로
+실행해 프로젝트 가상환경과 잠긴 의존성을 사용한다. 컨테이너는 개발용
+`--reload` 없이 `uv run uvicorn app.main:app --host 0.0.0.0 --port 8000`으로
+실행한다.
 
 ### 5.3 런타임과 배포
 
@@ -709,6 +721,8 @@ Playwright는 Docker Compose로 실행한 전체 시스템을 대상으로 하�
 │   │   │   └── styles/
 │   │   └── tests/
 │   ├── api/
+│   │   ├── pyproject.toml
+│   │   ├── uv.lock
 │   │   ├── app/
 │   │   │   ├── api/
 │   │   │   ├── clients/
@@ -746,6 +760,8 @@ Playwright는 Docker Compose로 실행한 전체 시스템을 대상으로 하�
       `src/e2e` 아래에 위치한다.
 - [ ] Python 백엔드가 `data/openapi.json` 기반의 별도 NEIS 클라이언트를
       사용한다.
+- [ ] 백엔드 의존성이 `src/api/pyproject.toml`과 `src/api/uv.lock`으로
+      관리되고 로컬·CI·컨테이너의 Python 명령이 `uv run`으로 실행된다.
 - [ ] `src/openapi.json`에 학교 검색 및 중식 조회 엔드포인트와 모든
       요청·응답·오류 스키마가 OpenAPI 3.1로 정의된다.
 - [ ] 학교 검색 API가 부분 이름, 페이지 번호 및 페이지 크기를 지원한다.
