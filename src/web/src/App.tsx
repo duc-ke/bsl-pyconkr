@@ -15,6 +15,7 @@ export function App() {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [selectedSchool, setSelectedSchool] = useState<School>();
+  const [criteriaMessage, setCriteriaMessage] = useState<string>();
   const [range, setRange] = useState<DateRange | undefined>(
     getDatePolicy().initial,
   );
@@ -62,14 +63,27 @@ export function App() {
       ),
   });
 
-  const selectSchool = (school: School) => {
-    setSelectedSchool(school);
+  const resetMealsForCriteriaChange = () => {
+    if (meals.data || meals.isError) {
+      setCriteriaMessage(
+        "조회 조건이 변경되었습니다. 변경한 조건으로 다시 조회해 주세요.",
+      );
+    }
     meals.reset();
+  };
+
+  const selectSchool = (school: School) => {
+    const isSameSchool =
+      selectedSchool?.educationOfficeCode === school.educationOfficeCode &&
+      selectedSchool.schoolCode === school.schoolCode;
+    if (isSameSchool) return;
+    setSelectedSchool(school);
+    resetMealsForCriteriaChange();
   };
 
   const changeRange = (nextRange: DateRange | undefined) => {
     setRange(nextRange);
-    meals.reset();
+    resetMealsForCriteriaChange();
   };
 
   const canSearchMeals =
@@ -104,7 +118,7 @@ export function App() {
               onChange={(event) => {
                 setQuery(event.target.value);
                 setSelectedSchool(undefined);
-                meals.reset();
+                resetMealsForCriteriaChange();
               }}
               placeholder="예: 서울고등학교"
               aria-describedby={inputError ? "school-query-error" : undefined}
@@ -180,7 +194,7 @@ export function App() {
                 type="button"
                 onClick={() => {
                   setSelectedSchool(undefined);
-                  meals.reset();
+                  resetMealsForCriteriaChange();
                 }}
               >
                 학교 다시 선택
@@ -217,6 +231,7 @@ export function App() {
             disabled={!canSearchMeals}
             onClick={() => {
               if (selectedSchool && range?.from && range.to) {
+                setCriteriaMessage(undefined);
                 meals.mutate({
                   school: selectedSchool,
                   selectedRange: { from: range.from, to: range.to },
@@ -229,6 +244,11 @@ export function App() {
         </section>
       </div>
 
+      {criteriaMessage && (
+        <div className="criteria-notice" role="status">
+          {criteriaMessage}
+        </div>
+      )}
       {meals.isError && (
         <div className="error-state results-error" role="alert">
           <strong>급식 조회에 실패했어요.</strong>

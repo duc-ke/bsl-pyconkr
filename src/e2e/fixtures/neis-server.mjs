@@ -25,6 +25,10 @@ function list(resource, rows) {
   };
 }
 
+function empty() {
+  return { RESULT: { CODE: "INFO-200", MESSAGE: "데이터 없음" } };
+}
+
 createServer((request, response) => {
   const url = new URL(request.url ?? "/", "http://localhost");
   response.setHeader("content-type", "application/json; charset=utf-8");
@@ -35,12 +39,36 @@ createServer((request, response) => {
   }
 
   if (url.pathname === "/hub/schoolInfo") {
-    response.end(JSON.stringify(list("schoolInfo", [school])));
+    const query = url.searchParams.get("SCHUL_NM");
+    const schoolCode = url.searchParams.get("SD_SCHUL_CODE");
+    if (query === "오류학교") {
+      response.statusCode = 500;
+      response.end(JSON.stringify({ error: "fixture failure" }));
+      return;
+    }
+    if (query === "없는학교") {
+      response.end(JSON.stringify(empty()));
+      return;
+    }
+    const selectedSchool =
+      query === "빈급식학교" || schoolCode === "7010570"
+        ? {
+            ...school,
+            SD_SCHUL_CODE: "7010570",
+            SCHUL_NM: "빈급식학교",
+          }
+        : school;
+    response.end(JSON.stringify(list("schoolInfo", [selectedSchool])));
     return;
   }
 
   if (url.pathname === "/hub/mealServiceDietInfo") {
     const date = url.searchParams.get("MLSV_TO_YMD");
+    const schoolCode = url.searchParams.get("SD_SCHUL_CODE");
+    if (schoolCode === "7010570") {
+      response.end(JSON.stringify(empty()));
+      return;
+    }
     response.end(
       JSON.stringify(
         list("mealServiceDietInfo", [

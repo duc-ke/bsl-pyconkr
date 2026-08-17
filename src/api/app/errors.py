@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from pydantic import ValidationError
 
 from app.models.internal import FieldError, ProblemDetails
 
@@ -127,8 +126,3 @@ async def internal_error_handler(request: Request, error: Exception) -> JSONResp
             problem_type="internal-error",
         ),
     )
-
-
-def translate_validation_error(error: ValidationError) -> AppError:
-    del error
-    return bad_neis_response()

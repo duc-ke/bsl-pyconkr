@@ -69,6 +69,7 @@ input { width: 100%; min-height: 52px; border: 1px solid #aaa99f; border-radius:
 .rdp-root { --rdp-accent-color: var(--green); --rdp-accent-background-color: var(--green-soft); }
 
 .empty-state, .error-state { display: grid; gap: 6px; margin-top: 22px; border-radius: 16px; background: #efede6; padding: 18px; }
+.criteria-notice { margin-top: 18px; border-left: 4px solid var(--green); border-radius: 12px; background: var(--green-soft); padding: 14px 18px; color: #173d29; font-weight: 700; }
 .error-state { border-left: 4px solid var(--danger); background: #fff0ed; color: #73201f; }
 .error-state button { justify-self: start; border: 1px solid currentColor; border-radius: 9px; background: transparent; padding: 7px 12px; color: inherit; font-weight: 700; }
 .results-error { margin: 18px 0; }
@@ -84,6 +85,7 @@ input { width: 100%; min-height: 52px; border: 1px solid #aaa99f; border-radius:
 .meal-type { display: inline-block; border-radius: 999px; background: var(--orange); color: white; padding: 4px 9px; font-size: .75rem; font-weight: 800; }
 .dish-list { display: flex; flex-wrap: wrap; gap: 7px; list-style: none; padding: 18px 0; margin: 0; }
 .dish-list li { border-radius: 999px; background: #eeece5; padding: 7px 10px; font-size: .9rem; }
+.dish-empty { margin: 18px 0; color: var(--muted); }
 .meal-meta, .detail-list { margin: 0; }
 .meal-meta > div, .detail-list > div { display: flex; justify-content: space-between; gap: 14px; padding: 8px 0; border-bottom: 1px dotted var(--line); }
 dt { color: var(--muted); }

@@ -33,9 +33,15 @@ export function MealResults({ school, data }: MealResultsProps) {
                 <h3>{formatKoreanDate(parseISO(meal.date))}</h3>
                 <p>{school.name}</p>
               </header>
-              <ul className="dish-list" aria-label="메뉴">
-                {meal.dishes.map((dish) => <li key={dish}>{dish}</li>)}
-              </ul>
+              {meal.dishes.length > 0 ? (
+                <ul className="dish-list" aria-label="메뉴">
+                  {meal.dishes.map((dish, index) => (
+                    <li key={`${dish}-${index}`}>{dish}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="dish-empty">메뉴 정보 없음</p>
+              )}
               <dl className="meal-meta">
                 <div>
                   <dt>열량</dt>
