@@ -6,6 +6,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WEB_DIR="$ROOT_DIR/src/web"
 API_DIR="$ROOT_DIR/src/api"
 MCP_DIR="$ROOT_DIR/src/mcp"
+AGENT_DIR="$ROOT_DIR/src/agent"
 PIDS=()
 NAMES=()
 
@@ -54,6 +55,16 @@ if [[ -f "$ROOT_DIR/.env" ]]; then
   set +a
 fi
 
+if [[ -z "${GITHUB_TOKEN:-}" ]] && [[ -n "${GH_TOKEN:-}" ]]; then
+  export GITHUB_TOKEN="$GH_TOKEN"
+fi
+if [[ -z "${GITHUB_TOKEN:-}" ]] && command -v gh >/dev/null 2>&1; then
+  if github_token="$(gh auth token 2>/dev/null)"; then
+    export GITHUB_TOKEN="$github_token"
+    unset github_token
+  fi
+fi
+
 if [[ -z "${NEIS_API_KEY:-}" ]] \
   || [[ "$NEIS_API_KEY" == "replace-with-your-neis-api-key" ]]; then
   printf '%s\n' \
@@ -80,6 +91,10 @@ if [[ ! -d "$MCP_DIR/.venv" ]]; then
   printf '%s\n' "Installing MCP dependencies..."
   (cd "$MCP_DIR" && "$UV_BIN" sync --locked --all-groups)
 fi
+if [[ ! -d "$AGENT_DIR/.venv" ]]; then
+  printf '%s\n' "Installing agent dependencies..."
+  (cd "$AGENT_DIR" && "$UV_BIN" sync --locked --all-groups)
+fi
 
 trap cleanup EXIT
 trap 'exit 130' INT
@@ -91,6 +106,9 @@ start_service "api" \
 start_service "mcp" \
   bash -c 'cd "$1" && exec "$2" run --locked uvicorn app.main:app --reload --host 127.0.0.1 --port 8001' \
   bash "$MCP_DIR" "$UV_BIN"
+start_service "agent" \
+  bash -c 'cd "$1" && exec "$2" run --locked uvicorn app.main:app --reload --host 127.0.0.1 --port 8002' \
+  bash "$AGENT_DIR" "$UV_BIN"
 start_service "web" \
   bash -c 'cd "$1" && exec ./node_modules/.bin/vite --host 127.0.0.1 --port 5173' \
   bash "$WEB_DIR"
@@ -99,6 +117,8 @@ printf '\n%s\n' "Local development services are starting:"
 printf '  Web: %s\n' "http://127.0.0.1:5173"
 printf '  API: %s\n' "http://127.0.0.1:8000"
 printf '  MCP: %s\n' "http://127.0.0.1:8001/mcp"
+printf '  Agent: %s\n' "http://127.0.0.1:8002"
+printf '  DevUI: %s\n' "cd src/agent && uv run python -m app.devui"
 printf '%s\n\n' "Press Ctrl+C to stop all services."
 
 while true; do

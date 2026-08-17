@@ -10,6 +10,7 @@ NEIS 공개 API를 활용해 초중고 급식 메뉴를 조회하고 AI 에이�
 - NEIS 공개 API를 연동하는 백엔드와 사용자 인터페이스
 - Azure 배포 및 GitHub Actions 기반 테스트·배포 자동화
 - 급식 정보 활용을 위한 MCP 서버
+- 두 학교를 비교하는 Copilot SDK 기반 멀티 에이전트 서비스
 - 평가 루브릭에 따라 두 학교의 급식을 비교하는 멀티 에이전트 워크플로우
 
 ## 시작하기
@@ -72,6 +73,7 @@ cp .env.example .env
 - 웹: <http://localhost:5173>
 - API: <http://localhost:8000>
 - MCP: <http://127.0.0.1:8001/mcp>
+- Agent: <http://127.0.0.1:8002>
 
 배포와 유사한 컨테이너 환경을 확인할 때는 Docker Compose를 사용합니다.
 
@@ -80,11 +82,13 @@ docker compose up --build
 ```
 
 Compose에서는 웹이 <http://localhost:8080>, MCP가
-<http://localhost:8001/mcp>에서 실행됩니다.
+<http://localhost:8001/mcp>, Agent가 <http://localhost:8002>에서 실행됩니다.
 
 MCP 서버와 Inspector 실행 방법은
 [`src/mcp/README.md`](src/mcp/README.md), 개별 개발 서버와 테스트 명령은
 [기여 가이드](CONTRIBUTING.md)를 확인하세요.
+멀티 에이전트 실행과 DevUI는 [`src/agent/README.md`](src/agent/README.md)를
+확인하세요.
 
 ## 추가 학습 자료
 
