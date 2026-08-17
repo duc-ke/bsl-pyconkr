@@ -8,8 +8,9 @@
 
 - 이 프로젝트는 NEIS 공개 API를 활용해 학교 급식 메뉴를 조회하고 분석하는
   웹 애플리케이션을 단계별로 구현하는 워크숍입니다.
-- 현재 MVP는 React 프론트엔드, FastAPI 백엔드, 독립 MCP 서버, 내부 OpenAPI
-  계약 및 Docker Compose 실행 환경으로 구현되어 있습니다.
+- 현재 MVP는 React 프론트엔드, FastAPI 백엔드, 독립 MCP 서버, 독립 멀티
+  에이전트 서비스, 내부 OpenAPI 계약 및 Docker Compose 실행 환경으로
+  구현되어 있습니다.
 - 사용자는 두 글자 이상의 학교명을 입력해 학교를 자동 검색하고, 학교와 날짜
   범위를 선택해 중식 메뉴·열량·영양·원산지·급식 인원을 조회할 수 있습니다.
 - 승인된 제품 요구사항은 `PRD.md`, 기술 요구사항은 `TRD.md`를 기준으로
@@ -40,6 +41,8 @@
   이 명세로 NEIS를 직접 호출하지 않습니다.
 - MCP 서버는 `/mcp`에서 상태 비저장 Streamable HTTP를 제공하고 `/health`를
   상태 확인에 사용합니다. `getSchoolInfo`, `getMealServiceDietInfo` 도구의
+- Agent 서비스는 `src/agent`에서 기존 백엔드와 독립적으로 실행하며 MCP로
+  급식 데이터를 조회하고 `/ag-ui`에서 AG-UI 스트림을 제공합니다. `getSchoolInfo`, `getMealServiceDietInfo` 도구의
   이름, 설명 및 입력 스키마는 `data/openapi.json`에서 생성합니다.
 - 학교 검색어는 앞뒤 공백 제거 후 2~100자로 검증합니다.
 - 프론트엔드는 유효한 검색어 입력 후 350ms 동안 추가 입력이 없으면 자동으로
@@ -89,6 +92,9 @@
 - MCP 서버는 NEIS 인증키와 `Type=json`을 서버에서 주입하고 급식 도구의
   `MMEAL_SC_CODE`를 중식 코드 `2`로 강제합니다. `INFO-200`은 정상적인 빈
   결과로, 입력·외부 서비스 오류와 타임아웃은 MCP tool error로 반환합니다.
+- 멀티 에이전트는 GitHub Copilot SDK 브리지와 Microsoft Agent Framework
+  그래프를 사용합니다. 세 평가 Agent를 병렬 실행하고 점수와 승패는 Python
+  코드가 계산하며 최종 Agent가 이를 변경하지 못하게 합니다.
 
 ## TypeScript 가이드라인
 
@@ -124,6 +130,9 @@
 - MCP 서버는 `src/mcp`에서 `uv sync --locked --all-groups`,
   `uv run uvicorn app.main:app --reload --port 8001`,
   `uv run --locked pytest`를 사용합니다.
+- Agent 서비스는 `src/agent`에서 `uv sync --locked --all-groups`,
+  `uv run uvicorn app.main:app --reload --port 8002`,
+  `uv run --locked pytest`, `uv run python -m app.devui`를 사용합니다.
 - MCP Inspector는 `npx -y @modelcontextprotocol/inspector`로 별도 실행하고
   `Streamable HTTP` 방식의 `http://127.0.0.1:8001/mcp`에 연결합니다.
   `localhost`는 IPv6로 해석될 수 있으므로 로컬 Inspector URL에 사용하지

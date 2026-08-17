@@ -8,10 +8,56 @@ import {
   type School,
 } from "./api/client";
 import { DateRangeCard } from "./components/DateRangeCard";
+import { AnalysisPage } from "./components/AnalysisPage";
 import { MealResults } from "./components/MealResults";
 import { getDatePolicy, toApiDate } from "./utils/dates";
 
 export function App() {
+  const [page, setPage] = useState<"lookup" | "analysis">(
+    window.location.pathname === "/analysis" ? "analysis" : "lookup",
+  );
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setPage(window.location.pathname === "/analysis" ? "analysis" : "lookup");
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  const navigate = (nextPage: "lookup" | "analysis") => {
+    window.history.pushState(
+      {},
+      "",
+      nextPage === "analysis" ? "/analysis" : "/",
+    );
+    setPage(nextPage);
+  };
+
+  return (
+    <>
+      <nav className="top-nav" aria-label="주요 화면">
+        <button
+          type="button"
+          aria-current={page === "lookup" ? "page" : undefined}
+          onClick={() => navigate("lookup")}
+        >
+          급식 조회
+        </button>
+        <button
+          type="button"
+          aria-current={page === "analysis" ? "page" : undefined}
+          onClick={() => navigate("analysis")}
+        >
+          급식 분석
+        </button>
+      </nav>
+      {page === "analysis" ? <AnalysisPage /> : <MealLookupPage />}
+    </>
+  );
+}
+
+function MealLookupPage() {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [selectedSchool, setSelectedSchool] = useState<School>();

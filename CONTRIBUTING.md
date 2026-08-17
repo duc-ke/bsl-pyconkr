@@ -58,14 +58,30 @@ uv run --locked pytest
 uv run uvicorn app.main:app --reload --port 8001
 ```
 
+Agent 서비스 설정, 검사 및 실행:
+
+```sh
+cd src/agent
+uv sync --locked --all-groups
+uv run --locked pytest
+uv run uvicorn app.main:app --reload --port 8002
+```
+
+Agent Framework DevUI:
+
+```sh
+cd src/agent
+uv run python -m app.devui
+```
+
 전체 애플리케이션 로컬 개발 실행:
 
 ```sh
 ./run_app.sh
 ```
 
-스크립트는 웹 `5173`, API `8000`, MCP `8001` 포트를 사용하며 `Ctrl+C` 또는
-개별 서비스 종료 시 시작한 프로세스를 모두 정리합니다.
+스크립트는 웹 `5173`, API `8000`, MCP `8001`, Agent `8002` 포트를 사용하며
+`Ctrl+C` 또는 개별 서비스 종료 시 시작한 프로세스를 모두 정리합니다.
 
 MCP Inspector로 도구 목록과 호출을 확인하려면 별도 터미널에서 실행합니다.
 

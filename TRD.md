@@ -7,7 +7,7 @@
 | 항목 | 내용 |
 |------|------|
 | 문서명 | 급식 배틀 - 학교 급식 조회 앱 기술 요구사항 |
-| 문서 버전 | 1.2 |
+| 문서 버전 | 1.3 |
 | 문서 상태 | 승인 |
 | 승인 상태 | 승인 완료 |
 | 작성자 | 프로젝트 팀 |
@@ -17,8 +17,8 @@
 | 작성일 | 2026-08-17 |
 | 최종 수정일 | 2026-08-17 |
 | 목표 릴리스 | MVP |
-| 기준 PRD | [`PRD.md`](PRD.md) 1.3 |
-| 관련 이슈 | [#4 요구사항 문서 생성](https://github.com/duc-ke/bsl-pyconkr/issues/4), [#5 앱 개발](https://github.com/duc-ke/bsl-pyconkr/issues/5), [#8 MCP 서버 개발](https://github.com/duc-ke/bsl-pyconkr/issues/8) |
+| 기준 PRD | [`PRD.md`](PRD.md) 1.4 |
+| 관련 이슈 | [#4 요구사항 문서 생성](https://github.com/duc-ke/bsl-pyconkr/issues/4), [#5 앱 개발](https://github.com/duc-ke/bsl-pyconkr/issues/5), [#8 MCP 서버 개발](https://github.com/duc-ke/bsl-pyconkr/issues/8), [#9 멀티 에이전트 앱](https://github.com/duc-ke/bsl-pyconkr/issues/9) |
 | 외부 API 명세 | [`data/openapi.json`](data/openapi.json) |
 | 내부 API 명세 | [`src/openapi.json`](src/openapi.json) |
 
@@ -32,15 +32,16 @@
 | 1.0 | 2026-08-17 | 프로젝트 팀 | 검토 완료 및 기술 요구사항 승인 |
 | 1.1 | 2026-08-17 | 프로젝트 팀 | 구현된 자동 검색, NEIS 호환성 및 인수 결과 반영 |
 | 1.2 | 2026-08-17 | 프로젝트 팀 | 공식 SDK 1.x 기반 독립 MCP 서버와 로컬·Compose 실행 구성 추가 |
+| 1.3 | 2026-08-17 | 프로젝트 팀 | Copilot SDK 기반 독립 멀티 에이전트 서비스와 AG-UI 분석 화면 추가 |
 
 ## 2. 목적과 범위
 
-이 문서는 승인된 `PRD.md` 1.3을 구현하기 위한 시스템 구조, 구성 요소의 책임,
+이 문서는 승인된 `PRD.md` 1.4를 구현하기 위한 시스템 구조, 구성 요소의 책임,
 프론트엔드와 백엔드 사이의 API 계약, MCP 도구 계약, 외부 NEIS API 연동,
 실행 환경 및 테스트 전략을 정의한다.
 
-MVP는 학교 검색, 날짜 범위 선택 및 중식 조회만 제공한다. 인증, 사용자 데이터,
-투표, 학교 간 자동 비교 및 AI 분석은 기술 범위에 포함하지 않는다.
+MVP는 학교 검색, 날짜 범위 기반 중식 조회와 두 학교의 루브릭 기반 비교를
+제공한다. 인증, 사용자 데이터와 투표는 기술 범위에 포함하지 않는다.
 
 ## 3. 기술 목표와 원칙
 
@@ -53,7 +54,8 @@ MVP는 학교 검색, 날짜 범위 선택 및 중식 조회만 제공한다. �
   표면에만 제한한다.
 - 구현과 테스트는 같은 OpenAPI 계약을 기준으로 검증한다.
 - 모든 애플리케이션과 테스트 코드는 `src` 아래에 두고, 웹은 `src/web`,
-  API는 `src/api`, MCP는 `src/mcp`, E2E는 `src/e2e`에서 관리한다.
+  API는 `src/api`, MCP는 `src/mcp`, Agent는 `src/agent`, E2E는 `src/e2e`에서
+  관리한다.
 - MCP 서버는 웹 백엔드와 런타임·의존성·NEIS 연결을 공유하지 않는 독립
   서비스로 유지한다.
 
@@ -65,13 +67,14 @@ flowchart LR
     F[React 프론트엔드]
     B[Python 백엔드 API]
     M[Python MCP 서버]
-    A[AI 에이전트]
+    A[Python Agent 서비스]
     N[NEIS 공개 API]
     C[src/openapi.json]
     E[data/openapi.json]
 
     U --> F
     F -->|HTTPS /api/v1| B
+    F -->|AG-UI SSE /agent/ag-ui| A
     A -->|Streamable HTTP /mcp| M
     B -->|HTTPS| N
     M -->|HTTPS| N
@@ -102,6 +105,22 @@ flowchart LR
    코드를 서버 측에서 적용해 NEIS를 직접 호출한다.
 4. MCP 서버는 NEIS JSON을 텍스트 및 구조화 콘텐츠로 반환한다. 빈 결과는 정상
    응답으로, 검증·NEIS·통신·타임아웃 실패는 MCP 도구 오류로 반환한다.
+
+### 4.3 멀티 에이전트 비교 흐름
+
+1. 프론트엔드는 Agent 서비스의 학교 후보 엔드포인트를 호출한다.
+2. Agent 서비스는 MCP `getSchoolInfo` 도구로 조회한 학교 중 10개를 무작위로
+   반환한다.
+3. 프론트엔드는 두 학교, 날짜와 수정 가능한 프롬프트를 AG-UI 요청으로 보낸다.
+4. 준비 Executor는 MCP `getMealServiceDietInfo`로 양쪽 학교의 같은 날짜 중식을
+   조회하며 하나라도 없으면 워크플로우를 중단한다.
+5. 그래프가 세 GitHub Copilot Agent에 동일한 데이터를 fan-out하고 결과를
+   fan-in한다.
+6. 점수 집계 Executor가 `(평점 / 5) × 가중치`를 소수 첫째 자리로 계산한다.
+7. 최종 품질 Agent는 점수를 변경하지 않고 근거와 모순을 검증하며, 포맷터가
+   결정론적으로 승자 또는 동점을 확정한다.
+8. AG-UI는 `STEP_STARTED`, 텍스트 및 완료 이벤트를 SSE로 프론트엔드에
+   스트리밍한다.
 
 ## 5. 권장 기술 구성
 
@@ -162,8 +181,9 @@ MCP 의존성은 `src/mcp/pyproject.toml`과 `src/mcp/uv.lock`에서 백엔드�
 
 ### 5.4 런타임과 배포
 
-- 프론트엔드, 백엔드 및 MCP 서버는 각각 별도 컨테이너 이미지로 빌드한다.
-- Docker Compose가 세 서비스, 네트워크, 포트 및 환경 변수를 정의한다.
+- 프론트엔드, 백엔드, MCP 및 Agent 서버는 각각 별도 컨테이너 이미지로
+  빌드한다.
+- Docker Compose가 네 서비스, 네트워크, 포트 및 환경 변수를 정의한다.
 - 로컬 개발은 루트 `run_app.sh`가 웹, API 및 MCP 개발 서버를 네이티브
   프로세스로 함께 실행하고 종료 시 시작한 프로세스를 정리한다.
 - 배포와 유사한 통합 실행 및 컨테이너 검증은 Docker Compose를 사용한다.
@@ -172,6 +192,8 @@ MCP 의존성은 `src/mcp/pyproject.toml`과 `src/mcp/uv.lock`에서 백엔드�
 - 프론트엔드가 사용하는 API 기본 URL은 환경별 설정으로 주입한다.
 - 백엔드의 NEIS 기본 URL, API 키 및 허용 Origin은 환경 변수로 주입한다.
 - MCP 서버의 NEIS 기본 URL, API 키 및 타임아웃은 환경 변수로 주입한다.
+- Agent 서비스의 MCP URL, Copilot 모델과 선택적 GitHub 토큰은 환경 변수로
+  주입한다.
 - 비밀값은 이미지, Compose 파일 또는 저장소에 기록하지 않는다.
 
 ## 6. 구성 요소 책임
@@ -220,6 +242,20 @@ MCP 의존성은 `src/mcp/pyproject.toml`과 `src/mcp/uv.lock`에서 백엔드�
   결과로 반환한다.
 - 도구 목록·호출은 인메모리 MCP 세션으로, Streamable HTTP 경계는 ASGI
   통합 테스트로, NEIS 연동은 모킹된 HTTP 전송으로 검증한다.
+
+### 6.5 Agent 서비스 책임
+
+- 기존 백엔드와 분리된 `src/agent` Python 프로젝트로 실행한다.
+- Microsoft Agent Framework 그래프와 GitHub Copilot SDK 브리지
+  `GitHubCopilotAgent`를 사용한다.
+- 세 평가 Agent는 동일한 입력을 병렬 처리하며 서로의 결과를 보지 않는다.
+- 평점 검증, 가중 점수, 총점과 승패는 일반 Python 코드로 계산한다.
+- 최종 품질 Agent는 별도 점수를 부여하지 않고 근거, 모순과 과도한 추정을
+  검증한다.
+- 중식 데이터는 백엔드 API가 아니라 MCP 서버의 도구로 조회한다.
+- 프론트엔드에는 AG-UI 엔드포인트를 제공하고 개발 환경에는 DevUI를 제공한다.
+- Copilot SDK와 AG-UI는 공개 Preview 또는 빠르게 변경되는 통합이므로 잠금
+  파일로 버전을 고정하고 업그레이드 시 계약 테스트를 실행한다.
 
 ## 7. 내부 OpenAPI 계약
 
@@ -796,6 +832,16 @@ Playwright는 Docker Compose로 실행한 전체 시스템을 대상으로 하�
 │   │   │   ├── neis_client.py
 │   │   │   └── openapi.py
 │   │   └── tests/
+│   ├── agent/
+│   │   ├── pyproject.toml
+│   │   ├── uv.lock
+│   │   ├── Dockerfile
+│   │   ├── app/
+│   │   │   ├── main.py
+│   │   │   ├── mcp_gateway.py
+│   │   │   ├── models.py
+│   │   │   └── workflow.py
+│   │   └── tests/
 │   └── e2e/
 │       ├── tests/
 │       └── fixtures/
@@ -805,7 +851,8 @@ Playwright는 Docker Compose로 실행한 전체 시스템을 대상으로 하�
 애플리케이션 코드와 테스트 코드는 반드시 `src` 아래에 둔다. 저장소 수준의
 문서, 원본 데이터, Docker Compose 및 CI 설정은 코드가 아니므로 루트의
 해당 경로에 유지할 수 있다. 프레임워크가 생성하는 내부 구조는 계층별 책임과
-`src/web`, `src/api`, `src/mcp`, `src/e2e`, `src/openapi.json` 경계를 유지하는
+`src/web`, `src/api`, `src/mcp`, `src/agent`, `src/e2e`, `src/openapi.json`
+경계를 유지하는
 범위에서 조정할 수 있다.
 
 ## 19. 구현 순서
@@ -816,8 +863,9 @@ Playwright는 Docker Compose로 실행한 전체 시스템을 대상으로 하�
 4. 명세에서 프론트엔드 타입과 API 클라이언트를 생성한다.
 5. 학교 검색, 날짜 범위 선택 및 결과 UI를 구현한다.
 6. 외부 OpenAPI 계약에서 MCP 도구를 생성하고 독립 NEIS 클라이언트를 연결한다.
-7. `run_app.sh`와 Docker Compose로 웹·API·MCP 세 서비스를 실행한다.
-8. 통합·단위·E2E·계약 테스트를 실행한다.
+7. 독립 Agent 서비스와 AG-UI 분석 화면을 구현한다.
+8. `run_app.sh`와 Docker Compose로 웹·API·MCP·Agent 서비스를 실행한다.
+9. 통합·단위·E2E·계약 테스트를 실행한다.
 
 ## 20. 기술 인수 조건
 
@@ -854,3 +902,10 @@ Playwright는 Docker Compose로 실행한 전체 시스템을 대상으로 하�
 - [x] MCP 도구 조회·호출, NEIS 연동, 빈 결과, 오류 및 타임아웃 테스트가
       실제 외부 네트워크 없이 통과한다.
 - [x] MCP 컨테이너가 Docker Compose에 포함되고 `/health`로 상태를 확인한다.
+- [x] 독립 Agent 서비스가 Copilot SDK 기반 세 전문 Agent를 fan-out/fan-in
+      그래프로 병렬 실행한다.
+- [x] 점수와 승패가 애플리케이션 코드에서 결정론적으로 계산되고 최종 Agent는
+      품질 게이트만 수행한다.
+- [x] Agent 서비스가 MCP로 학교와 중식을 조회하고 프론트엔드와 AG-UI로
+      진행 상태 및 결과를 교환한다.
+- [x] Agent 워크플로우를 로컬 DevUI에서 확인할 수 있다.

@@ -69,6 +69,25 @@ jobs:
         if: ${{ hashFiles('src/api/pyproject.toml') == '' }}
         run: echo "src/api/pyproject.toml is not present yet; skipping Python checks."
 
+  agent:
+    name: Python Agent
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+          cache-dependency-glob: src/agent/uv.lock
+      - name: Install dependencies
+        working-directory: src/agent
+        run: uv sync --locked --all-groups
+      - name: Test
+        working-directory: src/agent
+        run: uv run --locked pytest
+
   compose:
     name: Docker Compose
     runs-on: ubuntu-latest

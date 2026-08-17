@@ -79,3 +79,32 @@ test("키보드만으로 학교 선택과 급식 조회를 완료한다", async 
   await page.keyboard.press("Enter");
   await expect(page.getByText("현미밥")).toBeVisible();
 });
+
+test("두 학교를 선택해 멀티 에이전트 급식 분석 결과를 확인한다", async ({
+  page,
+}) => {
+  await page.goto("/analysis");
+  await expect(
+    page.getByRole("heading", { name: "두 학교의 급식을 근거로 비교해 보세요." }),
+  ).toBeVisible();
+
+  const schools = page.getByRole("checkbox");
+  await expect(schools).toHaveCount(10);
+  await schools.nth(0).check();
+  await schools.nth(1).check();
+  await expect(schools.nth(2)).toBeDisabled();
+
+  const selectedDate = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  await page.getByLabel("급식 날짜").fill(selectedDate);
+  await expect(page.getByLabel("분석 프롬프트")).toHaveValue(/비교학교 1/);
+  await page.getByRole("button", { name: "급식 비교 분석하기" }).click();
+
+  await expect(page.getByText("비교학교 1 승리")).toBeVisible();
+  await expect(page.getByText("89.0점")).toBeVisible();
+  await expect(page.getByText("가중 점수와 총점을 계산하고 있어요.")).toBeVisible();
+});
