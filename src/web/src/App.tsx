@@ -1,5 +1,5 @@
-import { useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import type { DateRange } from "react-day-picker";
 import {
   getErrorMessage,
@@ -13,13 +13,40 @@ import { getDatePolicy, toApiDate } from "./utils/dates";
 
 export function App() {
   const [query, setQuery] = useState("");
-  const [inputError, setInputError] = useState<string>();
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [selectedSchool, setSelectedSchool] = useState<School>();
   const [range, setRange] = useState<DateRange | undefined>(
     getDatePolicy().initial,
   );
 
-  const schools = useMutation({ mutationFn: searchSchools });
+  const normalizedQuery = query.trim();
+  const inputError =
+    normalizedQuery.length > 0 && normalizedQuery.length < 2
+      ? "학교 이름을 2자 이상 입력해 주세요."
+      : normalizedQuery.length > 100
+        ? "학교 이름을 100자 이하로 입력해 주세요."
+        : undefined;
+
+  useEffect(() => {
+    if (normalizedQuery.length < 2 || normalizedQuery.length > 100) {
+      setDebouncedQuery("");
+      return;
+    }
+    const timer = window.setTimeout(
+      () => setDebouncedQuery(normalizedQuery),
+      350,
+    );
+    return () => window.clearTimeout(timer);
+  }, [normalizedQuery]);
+
+  const schools = useQuery({
+    queryKey: ["schools", debouncedQuery],
+    queryFn: () => searchSchools(debouncedQuery),
+    enabled: debouncedQuery.length >= 2,
+    retry: false,
+  });
+  const showSchoolState =
+    debouncedQuery.length >= 2 && debouncedQuery === normalizedQuery;
   const meals = useMutation({
     mutationFn: ({
       school,
@@ -34,19 +61,6 @@ export function App() {
         toApiDate(selectedRange.to),
       ),
   });
-
-  const submitSearch = (event: React.FormEvent) => {
-    event.preventDefault();
-    const normalized = query.trim();
-    if (normalized.length < 2 || normalized.length > 100) {
-      setInputError("학교 이름을 2자 이상 100자 이하로 입력해 주세요.");
-      return;
-    }
-    setInputError(undefined);
-    setSelectedSchool(undefined);
-    meals.reset();
-    schools.mutate(normalized);
-  };
 
   const selectSchool = (school: School) => {
     setSelectedSchool(school);
@@ -82,44 +96,50 @@ export function App() {
         <section className="card search-card">
           <div className="step-label">01 · 학교 찾기</div>
           <h2>어느 학교의 급식인가요?</h2>
-          <form onSubmit={submitSearch} noValidate>
+          <div>
             <label htmlFor="school-query">학교 이름</label>
             <div className="search-row">
               <input
                 id="school-query"
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setSelectedSchool(undefined);
+                  meals.reset();
+                }}
                 placeholder="예: 서울고등학교"
                 aria-describedby={inputError ? "school-query-error" : undefined}
                 aria-invalid={Boolean(inputError)}
               />
-              <button type="submit" disabled={schools.isPending}>
-                {schools.isPending ? "검색 중…" : "검색"}
-              </button>
             </div>
             {inputError && (
               <p className="field-message" id="school-query-error">
                 {inputError}
               </p>
             )}
-          </form>
+            {!inputError && normalizedQuery.length >= 2 && (
+              <p className="search-hint" aria-live="polite">
+                {schools.isFetching ? "학교를 검색하고 있어요…" : "자동으로 검색됩니다."}
+              </p>
+            )}
+          </div>
           <div aria-live="polite">
-            {schools.isError && (
+            {showSchoolState && schools.isError && (
               <div className="error-state" role="alert">
                 <strong>학교 검색에 실패했어요.</strong>
                 <span>{getErrorMessage(schools.error)}</span>
-                <button type="button" onClick={() => schools.mutate(query.trim())}>
+                <button type="button" onClick={() => schools.refetch()}>
                   다시 시도
                 </button>
               </div>
             )}
-            {schools.data?.items.length === 0 && (
+            {showSchoolState && schools.data?.items.length === 0 && (
               <div className="empty-state" role="status">
                 <strong>검색 결과가 없어요.</strong>
                 <span>학교 이름을 확인하거나 더 넓은 검색어를 사용해 보세요.</span>
               </div>
             )}
-            {schools.data && schools.data.items.length > 0 && (
+            {showSchoolState && schools.data && schools.data.items.length > 0 && (
               <ul className="school-results" aria-label="학교 검색 결과">
                 {schools.data.items.map((school) => {
                   const selected =

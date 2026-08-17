@@ -7,7 +7,6 @@ test("학교 검색부터 중식 결과까지 조회한다", async ({ page }) =>
   ).toBeVisible();
 
   await page.getByLabel("학교 이름").fill("서울");
-  await page.getByRole("button", { name: "검색" }).click();
   await page.getByRole("button", { name: /서울고등학교/ }).click();
 
   await expect(page.getByText("서울고등학교 · 중식")).toBeVisible();

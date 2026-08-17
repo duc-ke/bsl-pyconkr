@@ -28,7 +28,6 @@ describe("school lunch flow", () => {
     renderApp();
 
     await user.type(screen.getByLabelText("학교 이름"), "서울");
-    await user.click(screen.getByRole("button", { name: "검색" }));
     await user.click(await screen.findByRole("button", { name: /서울고등학교/ }));
 
     expect(screen.getAllByText(/2026년 8월 11일/)).not.toHaveLength(0);
@@ -53,10 +52,10 @@ describe("school lunch flow", () => {
     renderApp();
 
     await user.type(screen.getByLabelText("학교 이름"), " 가 ");
-    await user.click(screen.getByRole("button", { name: "검색" }));
+    await vi.advanceTimersByTimeAsync(400);
 
     expect(
-      screen.getByText("학교 이름을 2자 이상 100자 이하로 입력해 주세요."),
+      screen.getByText("학교 이름을 2자 이상 입력해 주세요."),
     ).toBeInTheDocument();
     expect(requestCount).toBe(0);
   });
@@ -74,7 +73,6 @@ describe("school lunch flow", () => {
     renderApp();
 
     await user.type(screen.getByLabelText("학교 이름"), "없는학교");
-    await user.click(screen.getByRole("button", { name: "검색" }));
 
     expect(await screen.findByText("검색 결과가 없어요.")).toBeInTheDocument();
   });
