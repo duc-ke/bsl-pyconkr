@@ -6,7 +6,6 @@ import httpx
 from pydantic import BaseModel, ValidationError
 
 from app.errors import (
-    AppError,
     bad_neis_response,
     neis_timeout,
     neis_unavailable,

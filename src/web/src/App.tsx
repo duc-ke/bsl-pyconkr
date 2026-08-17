@@ -98,20 +98,18 @@ export function App() {
           <h2>어느 학교의 급식인가요?</h2>
           <div>
             <label htmlFor="school-query">학교 이름</label>
-            <div className="search-row">
-              <input
-                id="school-query"
-                value={query}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                  setSelectedSchool(undefined);
-                  meals.reset();
-                }}
-                placeholder="예: 서울고등학교"
-                aria-describedby={inputError ? "school-query-error" : undefined}
-                aria-invalid={Boolean(inputError)}
-              />
-            </div>
+            <input
+              id="school-query"
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setSelectedSchool(undefined);
+                meals.reset();
+              }}
+              placeholder="예: 서울고등학교"
+              aria-describedby={inputError ? "school-query-error" : undefined}
+              aria-invalid={Boolean(inputError)}
+            />
             {inputError && (
               <p className="field-message" id="school-query-error">
                 {inputError}
