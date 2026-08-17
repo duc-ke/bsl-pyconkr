@@ -8,8 +8,10 @@
 
 - 이 프로젝트는 NEIS 공개 API를 활용해 학교 급식 메뉴를 조회하고 분석하는
   웹 애플리케이션을 단계별로 구현하는 워크숍입니다.
-- 현재 리포지토리는 워크숍 문서와 API 자료를 중심으로 구성되어 있으며,
-  프론트엔드, 백엔드 및 배포 코드는 워크숍 진행 과정에서 추가될 수 있습니다.
+- 현재 MVP는 React 프론트엔드, FastAPI 백엔드, 내부 OpenAPI 계약 및 Docker
+  Compose 실행 환경으로 구현되어 있습니다.
+- 사용자는 두 글자 이상의 학교명을 입력해 학교를 자동 검색하고, 학교와 날짜
+  범위를 선택해 중식 메뉴·열량·영양·원산지·급식 인원을 조회할 수 있습니다.
 - 승인된 제품 요구사항은 `PRD.md`, 기술 요구사항은 `TRD.md`를 기준으로
   구현합니다. 두 문서가 충돌하거나 변경이 필요하면 코드를 먼저 바꾸지 말고
   문서와 결정 사항을 함께 갱신합니다.
@@ -21,12 +23,23 @@
 - 모든 애플리케이션과 테스트 코드는 `src` 아래에 둡니다.
 - React 프론트엔드는 `src/web`, Python 백엔드는 `src/api`, E2E 테스트는
   `src/e2e`에서 관리합니다.
+- 프론트엔드의 화면 흐름은 `src/web/src/App.tsx`, 내부 API 호출은
+  `src/web/src/api/client.ts`, 날짜 정책은 `src/web/src/utils/dates.ts`에
+  있습니다. 컴포넌트에서 `fetch`를 직접 호출하지 않습니다.
+- 백엔드는 `api` 라우터, `services` 유스케이스, `clients` 외부 통신,
+  `mappers` 응답 변환, `models` 경계 모델 및 `settings` 설정 계층을 유지합니다.
+- 내부 API는 `GET /api/v1/schools`, `GET /api/v1/meals`만 제공하며
+  `/health`는 컨테이너 상태 확인에 사용합니다.
 - `src/openapi.json`은 프론트엔드와 백엔드 사이의 내부 API 계약입니다.
   엔드포인트나 페이로드를 변경하면 명세, 양쪽 구현 및 계약 테스트를 함께
   갱신합니다.
+- `src/web/src/api/schema.d.ts`는 `src/openapi.json`에서 생성되는 파일입니다.
+  직접 수정하지 말고 `src/web`에서 `npm run generate:api`를 실행합니다.
 - `data/openapi.json`은 백엔드와 NEIS 사이의 외부 API 계약입니다.
   프론트엔드는 이 명세로 NEIS를 직접 호출하지 않습니다.
 - 학교 검색어는 앞뒤 공백 제거 후 2~100자로 검증합니다.
+- 프론트엔드는 유효한 검색어 입력 후 350ms 동안 추가 입력이 없으면 자동으로
+  검색하며, 백엔드에서도 같은 길이 제약을 다시 검증합니다.
 - 급식 조회는 중식으로 한정합니다. 날짜는 `Asia/Seoul`을 기준으로 현재 달과
   바로 이전 달만 허용하며 기본 범위는 오늘을 포함한 최근 7일입니다.
 - 검색 결과 없음과 급식 정보 없음은 정상적인 빈 결과로, 입력 오류와 NEIS
@@ -59,6 +72,13 @@
   있을 때만 프로젝트의 기존 의존성 관리 방식으로 추가합니다.
 - 작고 응집도 높은 함수, 명확한 이름, 테스트 가능한 구조를 유지하고 전역
   가변 상태와 숨은 부작용을 피합니다.
+- FastAPI 앱은 `create_app` 팩터리에서 설정, HTTP 전송 및 기준 날짜를 주입할
+  수 있게 유지합니다. 테스트에서 실제 NEIS 네트워크를 호출하지 않습니다.
+- NEIS 호출은 연결 풀을 공유하는 HTTPX `AsyncClient`를 사용합니다. 실제 NEIS
+  서버 호환성을 위해 IPv4 전송을 유지하고 `Accept: application/json` 헤더를
+  강제로 추가하지 않습니다.
+- 외부 NEIS 모델과 내부 API 모델을 재사용하지 않으며 변환은 `mappers.py`에서
+  수행합니다.
 
 ## TypeScript 가이드라인
 
@@ -74,6 +94,27 @@
   작게 유지합니다.
 - 새 패키지는 기존 의존성으로 해결할 수 없는 경우에만 프로젝트의 패키지
   관리자와 잠금 파일을 사용해 추가합니다.
+- 서버 상태는 TanStack Query로 관리하고 입력·선택 상태와 분리합니다. 검색어가
+  바뀌면 이전 학교 선택과 급식 결과를 현재 조건의 결과처럼 표시하지 않습니다.
+- 날짜는 API 경계에서만 `YYYY-MM-DD`로 직렬화하고, 기본 범위와 선택 가능
+  범위는 `Asia/Seoul` 기준으로 계산합니다.
+- NEIS 문자열은 React 텍스트로 렌더링하며 `dangerouslySetInnerHTML`을 사용하지
+  않습니다.
+
+## 개발 및 실행 명령
+
+- 전체 앱은 루트에서 `.env.example`을 `.env`로 복사하고 `NEIS_API_KEY`를
+  설정한 뒤 `docker compose up --build`로 실행합니다. 기본 주소는
+  `http://localhost:8080`입니다.
+- 프론트엔드는 `src/web`에서 `npm ci`, `npm run dev`, `npm run build`,
+  `npm test`, `npm run typecheck`를 사용합니다.
+- 백엔드는 `src/api`에서 `uv sync --locked --all-groups`,
+  `uv run uvicorn app.main:app --reload`, `uv run --locked pytest`를 사용합니다.
+- E2E는 `src/e2e`에서 `npm ci`, `npx playwright install chromium`,
+  `npm test`를 사용합니다. 테스트는 Compose로 전체 앱을 실행하고
+  `src/e2e/fixtures`의 결정적 NEIS 대역만 사용합니다.
+- 의존성을 변경하면 해당 패키지 관리자로 `src/web/package-lock.json`,
+  `src/e2e/package-lock.json` 또는 `src/api/uv.lock`을 함께 갱신합니다.
 
 ## 테스트 및 유효성 검사
 
@@ -82,6 +123,12 @@
 - 전체 사용자 흐름의 E2E 테스트는 Playwright를 사용합니다.
 - 백엔드가 내보내는 OpenAPI와 `src/openapi.json`의 차이를 계약 검사로
   탐지합니다.
+- 프론트엔드 테스트는 두 글자 자동 검색, 입력 검증, 학교 선택, 기본 날짜 범위,
+  결과·빈 상태를 사용자 행동 기준으로 검증합니다.
+- 백엔드 테스트는 NEIS 오류 변환, 중식 코드 강제, 날짜 정책, 데이터 매핑 및
+  OpenAPI 계약을 검증합니다.
+- E2E는 브라우저에서 학교 자동 검색, 선택, 중식 조회를 데스크톱과 모바일
+  뷰포트로 검증합니다. 내부 `/api/v1` 요청을 브라우저에서 가로채지 않습니다.
 - 동작을 변경하면 정상 경로, 실패 경로와 관련 경계 조건을 검증하는 테스트를
   추가하거나 수정합니다.
 - 변경한 구성 요소에 이미 설정된 테스트, 포맷팅, 린트, 타입 검사와 빌드를
