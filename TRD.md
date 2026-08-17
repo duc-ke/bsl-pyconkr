@@ -7,7 +7,7 @@
 | 항목 | 내용 |
 |------|------|
 | 문서명 | 급식 배틀 - 학교 급식 조회 앱 기술 요구사항 |
-| 문서 버전 | 1.1 |
+| 문서 버전 | 1.2 |
 | 문서 상태 | 승인 |
 | 승인 상태 | 승인 완료 |
 | 작성자 | 프로젝트 팀 |
@@ -17,8 +17,8 @@
 | 작성일 | 2026-08-17 |
 | 최종 수정일 | 2026-08-17 |
 | 목표 릴리스 | MVP |
-| 기준 PRD | [`PRD.md`](PRD.md) 1.2 |
-| 관련 이슈 | [#4 요구사항 문서 생성](https://github.com/duc-ke/bsl-pyconkr/issues/4), [#5 앱 개발](https://github.com/duc-ke/bsl-pyconkr/issues/5) |
+| 기준 PRD | [`PRD.md`](PRD.md) 1.3 |
+| 관련 이슈 | [#4 요구사항 문서 생성](https://github.com/duc-ke/bsl-pyconkr/issues/4), [#5 앱 개발](https://github.com/duc-ke/bsl-pyconkr/issues/5), [#8 MCP 서버 개발](https://github.com/duc-ke/bsl-pyconkr/issues/8) |
 | 외부 API 명세 | [`data/openapi.json`](data/openapi.json) |
 | 내부 API 명세 | [`src/openapi.json`](src/openapi.json) |
 
@@ -31,12 +31,13 @@
 | 0.3 | 2026-08-17 | 프로젝트 팀 | 모든 애플리케이션 코드를 `src` 하위 구조로 통합 |
 | 1.0 | 2026-08-17 | 프로젝트 팀 | 검토 완료 및 기술 요구사항 승인 |
 | 1.1 | 2026-08-17 | 프로젝트 팀 | 구현된 자동 검색, NEIS 호환성 및 인수 결과 반영 |
+| 1.2 | 2026-08-17 | 프로젝트 팀 | 공식 SDK 1.x 기반 독립 MCP 서버와 로컬·Compose 실행 구성 추가 |
 
 ## 2. 목적과 범위
 
-이 문서는 승인된 `PRD.md` 1.2를 구현하기 위한 시스템 구조, 구성 요소의 책임,
-프론트엔드와 백엔드 사이의 API 계약, 외부 NEIS API 연동, 실행 환경 및 테스트
-전략을 정의한다.
+이 문서는 승인된 `PRD.md` 1.3을 구현하기 위한 시스템 구조, 구성 요소의 책임,
+프론트엔드와 백엔드 사이의 API 계약, MCP 도구 계약, 외부 NEIS API 연동,
+실행 환경 및 테스트 전략을 정의한다.
 
 MVP는 학교 검색, 날짜 범위 선택 및 중식 조회만 제공한다. 인증, 사용자 데이터,
 투표, 학교 간 자동 비교 및 AI 분석은 기술 범위에 포함하지 않는다.
@@ -52,7 +53,9 @@ MVP는 학교 검색, 날짜 범위 선택 및 중식 조회만 제공한다. �
   표면에만 제한한다.
 - 구현과 테스트는 같은 OpenAPI 계약을 기준으로 검증한다.
 - 모든 애플리케이션과 테스트 코드는 `src` 아래에 두고, 웹은 `src/web`,
-  API는 `src/api`, E2E는 `src/e2e`에서 관리한다.
+  API는 `src/api`, MCP는 `src/mcp`, E2E는 `src/e2e`에서 관리한다.
+- MCP 서버는 웹 백엔드와 런타임·의존성·NEIS 연결을 공유하지 않는 독립
+  서비스로 유지한다.
 
 ## 4. 시스템 아키텍처
 
@@ -61,16 +64,21 @@ flowchart LR
     U[사용자 브라우저]
     F[React 프론트엔드]
     B[Python 백엔드 API]
+    M[Python MCP 서버]
+    A[AI 에이전트]
     N[NEIS 공개 API]
     C[src/openapi.json]
     E[data/openapi.json]
 
     U --> F
     F -->|HTTPS /api/v1| B
+    A -->|Streamable HTTP /mcp| M
     B -->|HTTPS| N
+    M -->|HTTPS| N
     C -. 내부 계약 .-> F
     C -. 내부 계약 .-> B
     E -. 외부 계약 .-> B
+    E -. 외부 계약 .-> M
 ```
 
 ### 4.1 요청 흐름
@@ -84,6 +92,16 @@ flowchart LR
 5. 백엔드는 NEIS 급식식단정보 API를 중식 조건으로 호출한다.
 6. 백엔드는 메뉴·영양·원산지의 구분 문자열을 구조화된 배열로 변환하고
    날짜순으로 반환한다.
+
+### 4.2 MCP 요청 흐름
+
+1. MCP 클라이언트는 `/mcp`에 Streamable HTTP로 연결하고 도구 목록을 요청한다.
+2. MCP 서버는 `data/openapi.json`에서 생성한 `getSchoolInfo`와
+   `getMealServiceDietInfo` 도구 정의를 반환한다.
+3. 클라이언트가 도구를 호출하면 MCP 서버는 인증키, JSON 응답 형식 및 중식
+   코드를 서버 측에서 적용해 NEIS를 직접 호출한다.
+4. MCP 서버는 NEIS JSON을 텍스트 및 구조화 콘텐츠로 반환한다. 빈 결과는 정상
+   응답으로, 검증·NEIS·통신·타임아웃 실패는 MCP 도구 오류로 반환한다.
 
 ## 5. 권장 기술 구성
 
@@ -126,14 +144,34 @@ app.main:app --reload`이다. 테스트와 그 밖의 Python 도구도 `uv run`�
 `--reload` 없이 `uv run uvicorn app.main:app --host 0.0.0.0 --port 8000`으로
 실행한다.
 
-### 5.3 런타임과 배포
+### 5.3 MCP 서버
 
-- 프론트엔드와 백엔드는 각각 별도 컨테이너 이미지로 빌드한다.
-- Docker Compose가 두 서비스, 네트워크, 포트 및 환경 변수를 정의한다.
+| 영역 | 기술 | 선택 이유 |
+|------|------|-----------|
+| 프로토콜 SDK | 공식 Python MCP SDK `>=1.28,<2` | MCP 1.x 호환 도구·클라이언트·Streamable HTTP 지원 |
+| MCP 서버 | 저수준 `Server` | OpenAPI에서 생성한 입력 스키마와 도구 오류 결과를 명시적으로 제어 |
+| 전송 | 상태 비저장 Streamable HTTP | 독립 HTTP 서비스와 범용 MCP 클라이언트 연결 지원 |
+| ASGI 런타임 | Starlette + Uvicorn | MCP 세션 관리자 마운트와 상태 확인 엔드포인트 제공 |
+| 외부 통신 | HTTPX AsyncClient | 비동기 NEIS 요청, IPv4 전송 및 테스트 주입 지원 |
+| 계약 검증 | jsonschema | OpenAPI에서 생성한 MCP 입력 스키마의 유효성 검증 |
+| 설정 | pydantic-settings | 인증키, 기본 URL 및 타임아웃 환경 변수 검증 |
+
+MCP 의존성은 `src/mcp/pyproject.toml`과 `src/mcp/uv.lock`에서 백엔드와
+독립적으로 관리한다. 서버는 `/mcp`와 `/health`만 제공하며 로컬 기본 포트는
+`8001`이다.
+
+### 5.4 런타임과 배포
+
+- 프론트엔드, 백엔드 및 MCP 서버는 각각 별도 컨테이너 이미지로 빌드한다.
+- Docker Compose가 세 서비스, 네트워크, 포트 및 환경 변수를 정의한다.
+- 로컬 개발은 루트 `run_app.sh`가 웹, API 및 MCP 개발 서버를 네이티브
+  프로세스로 함께 실행하고 종료 시 시작한 프로세스를 정리한다.
+- 배포와 유사한 통합 실행 및 컨테이너 검증은 Docker Compose를 사용한다.
 - 런타임 버전은 구현 시점의 지원 중인 LTS 또는 안정 버전을 선택하고
   Dockerfile과 잠금 파일에 고정한다.
 - 프론트엔드가 사용하는 API 기본 URL은 환경별 설정으로 주입한다.
 - 백엔드의 NEIS 기본 URL, API 키 및 허용 Origin은 환경 변수로 주입한다.
+- MCP 서버의 NEIS 기본 URL, API 키 및 타임아웃은 환경 변수로 주입한다.
 - 비밀값은 이미지, Compose 파일 또는 저장소에 기록하지 않는다.
 
 ## 6. 구성 요소 책임
@@ -165,6 +203,23 @@ app.main:app --reload`이다. 테스트와 그 밖의 Python 도구도 `uv run`�
 - 응답을 Pydantic 모델로 검증한 뒤 서비스 계층에 전달한다.
 - 재시도는 연결 실패나 제한된 일시 오류에만 적용하며 잘못된 요청에는
   적용하지 않는다.
+
+### 6.4 MCP 서버 책임
+
+- `src/mcp`의 독립 Python 프로젝트로 구성하고 공식 Python MCP SDK
+  `>=1.28,<2`를 사용한다.
+- `/mcp`에서 상태 비저장 Streamable HTTP 전송을 제공하고 `/health`를
+  컨테이너 상태 확인에 사용한다.
+- `data/openapi.json`의 `getSchoolInfo`, `getMealServiceDietInfo` 연산을 MCP
+  도구 이름, 설명 및 입력 스키마의 기준으로 사용한다.
+- NEIS 인증키와 JSON 응답 형식은 서버에서 주입하고 인증키를 도구 스키마,
+  응답 및 오류에 포함하지 않는다.
+- 급식 도구의 식사 코드는 중식 `2`로 강제한다.
+- `INFO-200`은 정상적인 빈 결과로 반환하고 입력 검증, NEIS 업무 오류, HTTP
+  오류, 연결 실패, 잘못된 응답 및 타임아웃은 `isError`가 설정된 MCP 도구
+  결과로 반환한다.
+- 도구 목록·호출은 인메모리 MCP 세션으로, Streamable HTTP 경계는 ASGI
+  통합 테스트로, NEIS 연동은 모킹된 HTTP 전송으로 검증한다.
 
 ## 7. 내부 OpenAPI 계약
 
@@ -710,6 +765,7 @@ Playwright는 Docker Compose로 실행한 전체 시스템을 대상으로 하�
 .
 ├── PRD.md
 ├── TRD.md
+├── run_app.sh
 ├── data/
 │   └── openapi.json
 ├── src/
@@ -731,6 +787,15 @@ Playwright는 Docker Compose로 실행한 전체 시스템을 대상으로 하�
 │   │   │   ├── services/
 │   │   │   └── settings/
 │   │   └── tests/
+│   ├── mcp/
+│   │   ├── pyproject.toml
+│   │   ├── uv.lock
+│   │   ├── Dockerfile
+│   │   ├── app/
+│   │   │   ├── main.py
+│   │   │   ├── neis_client.py
+│   │   │   └── openapi.py
+│   │   └── tests/
 │   └── e2e/
 │       ├── tests/
 │       └── fixtures/
@@ -740,8 +805,8 @@ Playwright는 Docker Compose로 실행한 전체 시스템을 대상으로 하�
 애플리케이션 코드와 테스트 코드는 반드시 `src` 아래에 둔다. 저장소 수준의
 문서, 원본 데이터, Docker Compose 및 CI 설정은 코드가 아니므로 루트의
 해당 경로에 유지할 수 있다. 프레임워크가 생성하는 내부 구조는 계층별 책임과
-`src/web`, `src/api`, `src/e2e`, `src/openapi.json` 경계를 유지하는 범위에서
-조정할 수 있다.
+`src/web`, `src/api`, `src/mcp`, `src/e2e`, `src/openapi.json` 경계를 유지하는
+범위에서 조정할 수 있다.
 
 ## 19. 구현 순서
 
@@ -750,15 +815,16 @@ Playwright는 Docker Compose로 실행한 전체 시스템을 대상으로 하�
 3. 내부 API 라우트와 오류 계약을 구현한다.
 4. 명세에서 프론트엔드 타입과 API 클라이언트를 생성한다.
 5. 학교 검색, 날짜 범위 선택 및 결과 UI를 구현한다.
-6. Docker Compose로 두 서비스를 연결한다.
-7. 통합·단위·E2E·계약 테스트를 실행한다.
+6. 외부 OpenAPI 계약에서 MCP 도구를 생성하고 독립 NEIS 클라이언트를 연결한다.
+7. `run_app.sh`와 Docker Compose로 웹·API·MCP 세 서비스를 실행한다.
+8. 통합·단위·E2E·계약 테스트를 실행한다.
 
 ## 20. 기술 인수 조건
 
 - [x] React 프론트엔드가 내부 백엔드 API만 호출하고 NEIS를 직접 호출하지
       않는다.
-- [x] 프론트엔드, 백엔드 및 E2E 코드는 각각 `src/web`, `src/api`,
-      `src/e2e` 아래에 위치한다.
+- [x] 프론트엔드, 백엔드, MCP 및 E2E 코드는 각각 `src/web`, `src/api`,
+      `src/mcp`, `src/e2e` 아래에 위치한다.
 - [x] Python 백엔드가 `data/openapi.json` 기반의 별도 NEIS 클라이언트를
       사용한다.
 - [x] 백엔드 의존성이 `src/api/pyproject.toml`과 `src/api/uv.lock`으로
@@ -773,10 +839,18 @@ Playwright는 Docker Compose로 실행한 전체 시스템을 대상으로 하�
       가능 날짜는 현재 달과 바로 이전 달로 제한된다.
 - [x] 메뉴, 열량, 영양, 원산지 및 급식 인원이 내부 페이로드로 정규화된다.
 - [x] 빈 결과, 검증 오류, NEIS 오류 및 타임아웃이 계약대로 구분된다.
-- [x] 프론트엔드와 백엔드가 Docker Compose로 빌드·실행된다.
+- [x] 프론트엔드, 백엔드 및 MCP 서버가 `run_app.sh`로 로컬 실행되고 Docker
+      Compose로 각각 빌드·실행된다.
 - [x] Vitest·React Testing Library·MSW 기반 프론트엔드 통합 테스트가
       핵심 UI 상태를 검증한다.
 - [x] pytest 기반 백엔드 단위·통합 테스트가 매핑과 API 계약을 검증한다.
 - [x] Playwright E2E 테스트가 학교 검색부터 급식 결과까지 전체 흐름을
       검증한다.
 - [x] CI가 백엔드 구현과 `src/openapi.json`의 계약 차이를 탐지한다.
+- [x] 공식 Python MCP SDK 1.x 기반 서버가 `src/mcp`에서 백엔드와 독립적으로
+      실행되고 `/mcp`에서 Streamable HTTP 연결을 제공한다.
+- [x] MCP 학교·중식 도구가 `data/openapi.json`에서 생성되고 중식 코드와 서버
+      측 인증키를 강제한다.
+- [x] MCP 도구 조회·호출, NEIS 연동, 빈 결과, 오류 및 타임아웃 테스트가
+      실제 외부 네트워크 없이 통과한다.
+- [x] MCP 컨테이너가 Docker Compose에 포함되고 `/health`로 상태를 확인한다.

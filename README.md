@@ -58,18 +58,33 @@ NEIS 공개 API를 활용해 초중고 급식 메뉴를 조회하고 AI 에이�
 
 ## 애플리케이션 실행
 
-루트의 `.env.example`을 `.env`로 복사하고 발급받은 `NEIS_API_KEY`를 입력한
-뒤 전체 애플리케이션을 실행합니다.
+루트의 `.env.example`을 `.env`로 복사하고 발급받은 `NEIS_API_KEY`를 입력합니다.
+
+로컬 개발과 MCP Inspector 테스트에는 네이티브 개발 서버를 한 번에 실행하는
+스크립트를 사용합니다. 최초 실행 시 누락된 의존성만 설치하며 `Ctrl+C`로 세
+서비스를 함께 종료할 수 있습니다.
 
 ```sh
 cp .env.example .env
+./run_app.sh
+```
+
+- 웹: <http://localhost:5173>
+- API: <http://localhost:8000>
+- MCP: <http://127.0.0.1:8001/mcp>
+
+배포와 유사한 컨테이너 환경을 확인할 때는 Docker Compose를 사용합니다.
+
+```sh
 docker compose up --build
 ```
 
-브라우저에서 <http://localhost:8080>을 열면 학교 검색, 날짜 범위 선택 및
-중식 조회를 사용할 수 있습니다.
+Compose에서는 웹이 <http://localhost:8080>, MCP가
+<http://localhost:8001/mcp>에서 실행됩니다.
 
-개별 개발 서버와 테스트 명령은 [기여 가이드](CONTRIBUTING.md)를 확인하세요.
+MCP 서버와 Inspector 실행 방법은
+[`src/mcp/README.md`](src/mcp/README.md), 개별 개발 서버와 테스트 명령은
+[기여 가이드](CONTRIBUTING.md)를 확인하세요.
 
 ## 추가 학습 자료
 
