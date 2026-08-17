@@ -56,6 +56,21 @@ NEIS 공개 API를 활용해 초중고 급식 메뉴를 조회하고 AI 에이�
 
 프론트엔드, 백엔드 및 배포 관련 소스는 워크숍을 진행하면서 참가자의 저장소에 생성됩니다.
 
+## 애플리케이션 실행
+
+루트의 `.env.example`을 `.env`로 복사하고 발급받은 `NEIS_API_KEY`를 입력한
+뒤 전체 애플리케이션을 실행합니다.
+
+```sh
+cp .env.example .env
+docker compose up --build
+```
+
+브라우저에서 <http://localhost:8080>을 열면 학교 검색, 날짜 범위 선택 및
+중식 조회를 사용할 수 있습니다.
+
+개별 개발 서버와 테스트 명령은 [기여 가이드](CONTRIBUTING.md)를 확인하세요.
+
 ## 추가 학습 자료
 
 - [GitHub Copilot cloud agent 알아보기](https://docs.github.com/copilot/concepts/agents/coding-agent/about-coding-agent)
