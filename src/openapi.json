@@ -1,0 +1,646 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "급식 배틀 API",
+    "summary": "학교 검색 및 중식 조회 내부 API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/v1/schools": {
+      "get": {
+        "summary": "학교 검색",
+        "operationId": "searchSchools",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "학교 이름의 일부. 앞뒤 공백 제거 후 2~100자",
+              "title": "Query",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "description": "학교 이름의 일부. 앞뒤 공백 제거 후 2~100자"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "페이지 번호",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "페이지 번호"
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "페이지당 결과 수",
+              "default": 20,
+              "title": "Pagesize"
+            },
+            "description": "페이지당 결과 수"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolSearchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "502": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "504": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Gateway Timeout"
+          }
+        }
+      }
+    },
+    "/api/v1/meals": {
+      "get": {
+        "summary": "중식 조회",
+        "operationId": "searchMeals",
+        "parameters": [
+          {
+            "name": "educationOfficeCode",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "pattern": "^[A-Z0-9]{3}$",
+              "description": "NEIS 시도교육청 코드",
+              "title": "Educationofficecode"
+            },
+            "description": "NEIS 시도교육청 코드"
+          },
+          {
+            "name": "schoolCode",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 7,
+              "maxLength": 7,
+              "pattern": "^\\d{7}$",
+              "description": "NEIS 학교 행정표준코드",
+              "title": "Schoolcode"
+            },
+            "description": "NEIS 학교 행정표준코드"
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "조회 시작일",
+              "title": "From"
+            },
+            "description": "조회 시작일"
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "조회 종료일",
+              "title": "To"
+            },
+            "description": "조회 종료일"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MealSearchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "502": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "504": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Gateway Timeout"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Calorie": {
+        "properties": {
+          "amount": {
+            "type": "number",
+            "title": "Amount"
+          },
+          "unit": {
+            "type": "string",
+            "const": "kcal",
+            "title": "Unit"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "amount",
+          "unit"
+        ],
+        "title": "Calorie"
+      },
+      "DateRange": {
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date",
+            "title": "From"
+          },
+          "to": {
+            "type": "string",
+            "format": "date",
+            "title": "To"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "from",
+          "to"
+        ],
+        "title": "DateRange"
+      },
+      "FieldError": {
+        "properties": {
+          "field": {
+            "type": "string",
+            "title": "Field"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "field",
+          "message"
+        ],
+        "title": "FieldError"
+      },
+      "IngredientOrigin": {
+        "properties": {
+          "ingredient": {
+            "type": "string",
+            "title": "Ingredient"
+          },
+          "origin": {
+            "type": "string",
+            "title": "Origin"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "ingredient",
+          "origin"
+        ],
+        "title": "IngredientOrigin"
+      },
+      "Meal": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "dishes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Dishes"
+          },
+          "calorie": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Calorie"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nutrition": {
+            "items": {
+              "$ref": "#/components/schemas/Nutrient"
+            },
+            "type": "array",
+            "title": "Nutrition"
+          },
+          "originInfo": {
+            "items": {
+              "$ref": "#/components/schemas/IngredientOrigin"
+            },
+            "type": "array",
+            "title": "Origininfo"
+          },
+          "servingCount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Servingcount"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "date",
+          "dishes",
+          "calorie",
+          "nutrition",
+          "originInfo",
+          "servingCount"
+        ],
+        "title": "Meal"
+      },
+      "MealSearchResponse": {
+        "properties": {
+          "school": {
+            "$ref": "#/components/schemas/SelectedSchool"
+          },
+          "range": {
+            "$ref": "#/components/schemas/DateRange"
+          },
+          "mealType": {
+            "type": "string",
+            "const": "LUNCH",
+            "title": "Mealtype"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Meal"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "school",
+          "range",
+          "mealType",
+          "items"
+        ],
+        "title": "MealSearchResponse"
+      },
+      "Nutrient": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "amount": {
+            "type": "number",
+            "title": "Amount"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "amount",
+          "unit"
+        ],
+        "title": "Nutrient"
+      },
+      "Pagination": {
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page"
+          },
+          "pageSize": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Pagesize"
+          },
+          "totalCount": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Totalcount"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "page",
+          "pageSize",
+          "totalCount"
+        ],
+        "title": "Pagination"
+      },
+      "ProblemDetails": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "minLength": 1,
+            "format": "uri",
+            "title": "Type"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "status": {
+            "type": "integer",
+            "title": "Status"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "instance": {
+            "type": "string",
+            "title": "Instance"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "errors": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/FieldError"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Errors"
+          },
+          "traceId": {
+            "type": "string",
+            "title": "Traceid"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status",
+          "detail",
+          "instance",
+          "code",
+          "traceId"
+        ],
+        "title": "ProblemDetails"
+      },
+      "SchoolSearchResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SchoolSummary"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "pagination"
+        ],
+        "title": "SchoolSearchResponse"
+      },
+      "SchoolSummary": {
+        "properties": {
+          "educationOfficeCode": {
+            "type": "string",
+            "title": "Educationofficecode"
+          },
+          "educationOfficeName": {
+            "type": "string",
+            "title": "Educationofficename"
+          },
+          "schoolCode": {
+            "type": "string",
+            "title": "Schoolcode"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "schoolType": {
+            "type": "string",
+            "title": "Schooltype"
+          },
+          "region": {
+            "type": "string",
+            "title": "Region"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "educationOfficeCode",
+          "educationOfficeName",
+          "schoolCode",
+          "name",
+          "schoolType",
+          "region",
+          "address"
+        ],
+        "title": "SchoolSummary"
+      },
+      "SelectedSchool": {
+        "properties": {
+          "educationOfficeCode": {
+            "type": "string",
+            "title": "Educationofficecode"
+          },
+          "schoolCode": {
+            "type": "string",
+            "title": "Schoolcode"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "educationOfficeCode",
+          "schoolCode",
+          "name"
+        ],
+        "title": "SelectedSchool"
+      }
+    }
+  }
+}

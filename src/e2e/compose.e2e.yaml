@@ -1,0 +1,26 @@
+services:
+  fixture:
+    build:
+      context: ./src/e2e/fixtures
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://127.0.0.1:9090/health",
+        ]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+      start_period: 2s
+
+  api:
+    environment:
+      NEIS_BASE_URL: http://fixture:9090
+      NEIS_API_KEY: e2e-key
+    depends_on:
+      fixture:
+        condition: service_healthy

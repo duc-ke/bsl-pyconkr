@@ -16,26 +16,32 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
-        if: ${{ hashFiles('frontend/package-lock.json') != '' }}
+        if: ${{ hashFiles('src/web/package-lock.json') != '' }}
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: src/web/package-lock.json
       - name: Install dependencies
-        if: ${{ hashFiles('frontend/package-lock.json') != '' }}
-        working-directory: frontend
+        if: ${{ hashFiles('src/web/package-lock.json') != '' }}
+        working-directory: src/web
         run: npm ci
+      - name: Verify generated API types
+        if: ${{ hashFiles('src/web/package-lock.json') != '' }}
+        working-directory: src/web
+        run: |
+          npm run generate:api
+          git diff --exit-code -- src/api/schema.d.ts
       - name: Build
-        if: ${{ hashFiles('frontend/package-lock.json') != '' }}
-        working-directory: frontend
+        if: ${{ hashFiles('src/web/package-lock.json') != '' }}
+        working-directory: src/web
         run: npm run build --if-present
       - name: Test
-        if: ${{ hashFiles('frontend/package-lock.json') != '' }}
-        working-directory: frontend
+        if: ${{ hashFiles('src/web/package-lock.json') != '' }}
+        working-directory: src/web
         run: npm test --if-present
       - name: Await frontend scaffold
-        if: ${{ hashFiles('frontend/package-lock.json') == '' }}
-        run: echo "frontend/package-lock.json is not present yet; skipping TypeScript checks."
+        if: ${{ hashFiles('src/web/package-lock.json') == '' }}
+        run: echo "src/web/package-lock.json is not present yet; skipping TypeScript checks."
 
   backend:
     name: Python
@@ -74,3 +80,23 @@ jobs:
       - name: Await Compose scaffold
         if: ${{ hashFiles('compose.yml', 'compose.yaml', 'docker-compose.yml', 'docker-compose.yaml') == '' }}
         run: echo "No Compose file is present yet; skipping configuration validation."
+
+  e2e:
+    name: Playwright
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: src/e2e/package-lock.json
+      - name: Install dependencies
+        working-directory: src/e2e
+        run: npm ci
+      - name: Install browser
+        working-directory: src/e2e
+        run: npx playwright install --with-deps chromium
+      - name: Test full application
+        working-directory: src/e2e
+        run: npm test

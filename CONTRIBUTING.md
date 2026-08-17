@@ -21,8 +21,8 @@
 프론트엔드 설정 및 검사:
 
 ```sh
-cd frontend
-npm install
+cd src/web
+npm ci
 npm run build
 npm test
 ```
@@ -46,6 +46,15 @@ uv run uvicorn app.main:app --reload
 
 ```sh
 docker compose up --build
+```
+
+E2E 테스트:
+
+```sh
+cd src/e2e
+npm ci
+npx playwright install chromium
+npm test
 ```
 
 ## Pull Request 절차
