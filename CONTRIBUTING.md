@@ -67,7 +67,7 @@ uv run --locked pytest
 uv run uvicorn app.main:app --reload --port 8002
 ```
 
-Agent Framework DevUI:
+Agent Framework DevUI를 개별 실행하려면:
 
 ```sh
 cd src/agent
@@ -79,6 +79,8 @@ uv run python -m app.devui
 ```sh
 ./run_app.sh
 ```
+
+이 명령은 Agent Framework DevUI도 <http://127.0.0.1:8003>에서 함께 실행합니다.
 
 스크립트는 웹 `5173`, API `8000`, MCP `8001`, Agent `8002` 포트를 사용하며
 `Ctrl+C` 또는 개별 서비스 종료 시 시작한 프로세스를 모두 정리합니다.

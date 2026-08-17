@@ -74,6 +74,7 @@ cp .env.example .env
 - API: <http://localhost:8000>
 - MCP: <http://127.0.0.1:8001/mcp>
 - Agent: <http://127.0.0.1:8002>
+- Agent Framework DevUI: <http://127.0.0.1:8003>
 
 배포와 유사한 컨테이너 환경을 확인할 때는 Docker Compose를 사용합니다.
 

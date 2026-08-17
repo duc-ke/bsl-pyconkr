@@ -109,6 +109,9 @@ start_service "mcp" \
 start_service "agent" \
   bash -c 'cd "$1" && exec "$2" run --locked uvicorn app.main:app --reload --host 127.0.0.1 --port 8002' \
   bash "$AGENT_DIR" "$UV_BIN"
+start_service "devui" \
+  bash -c 'cd "$1" && exec "$2" run --locked python -m app.devui' \
+  bash "$AGENT_DIR" "$UV_BIN"
 start_service "web" \
   bash -c 'cd "$1" && exec ./node_modules/.bin/vite --host 127.0.0.1 --port 5173' \
   bash "$WEB_DIR"
@@ -118,7 +121,7 @@ printf '  Web: %s\n' "http://127.0.0.1:5173"
 printf '  API: %s\n' "http://127.0.0.1:8000"
 printf '  MCP: %s\n' "http://127.0.0.1:8001/mcp"
 printf '  Agent: %s\n' "http://127.0.0.1:8002"
-printf '  DevUI: %s\n' "cd src/agent && uv run python -m app.devui"
+printf '  DevUI: %s\n' "http://127.0.0.1:8003"
 printf '%s\n\n' "Press Ctrl+C to stop all services."
 
 while true; do

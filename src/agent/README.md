@@ -29,6 +29,8 @@ MCP 서버는 기본적으로 `http://127.0.0.1:8001/mcp`를 사용하며 `MCP_U
 ## DevUI
 
 DevUI는 개발·디버깅 전용이며 프로덕션 UI로 사용하지 않습니다.
+루트의 `./run_app.sh`를 사용하면 Agent 서비스와 함께 자동으로 실행됩니다.
+개별 실행이 필요한 경우 다음 명령을 사용합니다.
 
 ```sh
 uv run python -m app.devui
